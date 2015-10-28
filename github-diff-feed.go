@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -111,7 +110,7 @@ func main() {
 			md_src := fmt.Sprintf("```diff\n%s\n```\n", src)
 			md, _, md_err := gh_client.Markdown(md_src, md_opt)
 			if md_err != nil { log.Fatalf("failed rendering diff: %s", md_err) }
-			item.Patch = html.EscapeString(md)
+			item.Patch = md
 
 			feed_items = append(feed_items, &item)
 			feed_items.RemoveOld()
