@@ -120,7 +120,7 @@ func main() {
 		now := time.Now()
 		feed := &feeds.Feed{
 			Title: "feed generated from github feed",
-			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL"), Rel:"self"},
+			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL")},
 			Description: "feed generated from github feed",
 			Author: &feeds.Author { "take-cheeze", "takechi101010@gmail.com" },
 			Created: now,
