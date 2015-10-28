@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,8 +14,8 @@ import (
 	"time"
 	"golang.org/x/tools/blog/atom"
 	"github.com/gorilla/feeds"
-	"github.com/shurcooL/highlight_diff"
 	"github.com/gin-gonic/gin"
+	"github.com/google/go-github/github"
 )
 
 type FeedItem struct {
@@ -70,6 +71,8 @@ func main() {
 	}()
 
 	URL_MATCH := regexp.MustCompile(`^https://github.com/([\w\-_]+)/([\w\-_]+)/compare/(\w+)\.\.\.(\w+)$`)
+	gh_client := github.NewClient(nil)
+	md_opt := &github.MarkdownOptions{Mode: "markdown"}
 
 	go func() {
 		for {
@@ -105,10 +108,10 @@ func main() {
 			src, err := ioutil.ReadAll(resp.Body)
 			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
 
-			var buf bytes.Buffer
-			hl_err := highlight_diff.Print(highlight_diff.NewScanner(src), &buf)
-			if hl_err != nil { log.Fatalf("Failed highlighting patch: %s", hl_err) }
-			item.Patch = string(buf.Bytes())
+			md_src := fmt.Sprintf("```diff\n%s\n```\n", src)
+			md, _, md_err := gh_client.Markdown(md_src, md_opt)
+			if md_err != nil { log.Fatalf("failed rendering diff: %s", md_err) }
+			item.Patch = html.EscapeString(md)
 
 			feed_items = append(feed_items, &item)
 			feed_items.RemoveOld()
