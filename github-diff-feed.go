@@ -121,7 +121,7 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		now := time.Now()
 		feed := &feeds.Feed{
-			Title: "feed generated from github feed",
+			Title: "github-diff-feed",
 			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL")},
 			Description: "feed generated from github feed",
 			Author: &feeds.Author { "take-cheeze", "takechi101010@gmail.com" },
