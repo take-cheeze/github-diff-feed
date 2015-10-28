@@ -10,12 +10,10 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"text/template"
 	"time"
 	"golang.org/x/tools/blog/atom"
 	"github.com/gorilla/feeds"
 	"github.com/shurcooL/highlight_diff"
-	"github.com/sourcegraph/annotate"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,7 +27,7 @@ type FeedItem struct {
 
 type FeedItems []*FeedItem
 
-const FEED_ITEM_MAX = 200
+const FEED_ITEM_MAX = 100
 
 func (s FeedItems) Len() int { return len(s) }
 func (s FeedItems) Less(i, j int) bool { return s[i].Updated.Before(s[j].Updated) }
@@ -78,6 +76,8 @@ func main() {
 			e := <-patch_chan
 			link := e.Link[0].Href
 
+			log.Printf("Checking: %s", link)
+
 			already_fetched := false
 			for _, v := range feed_items {
 				if v.Url == link {
@@ -105,80 +105,12 @@ func main() {
 			src, err := ioutil.ReadAll(resp.Body)
 			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
 
-			anns, err := highlight_diff.Annotate(src)
-			if err != nil { log.Fatalf("Failed highlighting patch: %s", err) }
+			var buf bytes.Buffer
+			hl_err := highlight_diff.Print(highlight_diff.NewScanner(src), &buf)
+			if hl_err != nil { log.Fatalf("Failed highlighting patch: %s", hl_err) }
+			item.Patch = string(buf.Bytes())
 
-			lines := bytes.Split(src, []byte("\n"))
-			lineStarts := make([]int, len(lines))
-			var offset int
-			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
-				lineStarts[lineIndex] = offset
-				offset += len(lines[lineIndex]) + 1
-			}
-
-			lastDel, lastIns := -1, -1
-			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
-				var lineFirstChar byte
-				if len(lines[lineIndex]) > 0 {
-					lineFirstChar = lines[lineIndex][0]
-				}
-				switch lineFirstChar {
-				case '+':
-					if lastIns == -1 {
-						lastIns = lineIndex
-					}
-				case '-':
-					if lastDel == -1 {
-						lastDel = lineIndex
-					}
-				default:
-					if lastDel != -1 || lastIns != -1 {
-						if lastDel == -1 {
-							lastDel = lastIns
-						} else if lastIns == -1 {
-							lastIns = lineIndex
-						}
-
-						beginOffsetLeft := lineStarts[lastDel]
-						endOffsetLeft := lineStarts[lastIns]
-						beginOffsetRight := lineStarts[lastIns]
-						endOffsetRight := lineStarts[lineIndex]
-
-						anns = append(anns, &annotate.Annotation{Start: beginOffsetLeft, End: endOffsetLeft, Left: []byte(`<span class="gd input-block">`), Right: []byte(`</span>`), WantInner: 0})
-						anns = append(anns, &annotate.Annotation{Start: beginOffsetRight, End: endOffsetRight, Left: []byte(`<span class="gi input-block">`), Right: []byte(`</span>`), WantInner: 0})
-
-						if '@' != lineFirstChar {
-							//leftContent := string(src[beginOffsetLeft:endOffsetLeft])
-							//rightContent := string(src[beginOffsetRight:endOffsetRight])
-							// This is needed to filter out the "-" and "+" at the beginning of each line from being highlighted.
-							// TODO: Still not completely filtered out.
-							leftContent := ""
-							for line := lastDel; line < lastIns; line++ {
-								leftContent += "\x00" + string(lines[line][1:]) + "\n"
-							}
-							rightContent := ""
-							for line := lastIns; line < lineIndex; line++ {
-								rightContent += "\x00" + string(lines[line][1:]) + "\n"
-							}
-
-							var sectionSegments [2][]*annotate.Annotation
-							highlight_diff.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
-
-							anns = append(anns, sectionSegments[0]...)
-							anns = append(anns, sectionSegments[1]...)
-						}
-					}
-					lastDel, lastIns = -1, -1
-				}
-			}
-
-			sort.Sort(anns)
-
-			out, err := annotate.Annotate(src, anns, template.HTMLEscape)
-			if err != nil { log.Fatalf("Failed highlighting patch: %s", err) }
-			item.Patch = string(out)
 			feed_items = append(feed_items, &item)
-
 			feed_items.RemoveOld()
 		}
 	}()
@@ -188,7 +120,7 @@ func main() {
 		now := time.Now()
 		feed := &feeds.Feed{
 			Title: "feed generated from github feed",
-			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL")},
+			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL"), Rel:"self"},
 			Description: "feed generated from github feed",
 			Author: &feeds.Author { "take-cheeze", "takechi101010@gmail.com" },
 			Created: now,
