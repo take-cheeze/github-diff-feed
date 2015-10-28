@@ -14,7 +14,7 @@ import (
 	"golang.org/x/tools/blog/atom"
 	"github.com/gorilla/feeds"
 	"github.com/gin-gonic/gin"
-	"github.com/google/go-github/github"
+	// "github.com/google/go-github/github"
 )
 
 type FeedItem struct {
@@ -70,8 +70,8 @@ func main() {
 	}()
 
 	URL_MATCH := regexp.MustCompile(`^https://github.com/([\w\-_]+)/([\w\-_]+)/compare/(\w+)\.\.\.(\w+)$`)
-	gh_client := github.NewClient(nil)
-	md_opt := &github.MarkdownOptions{Mode: "markdown"}
+	// gh_client := github.NewClient(nil)
+	// md_opt := &github.MarkdownOptions{Mode: "markdown"}
 
 	go func() {
 		for {
@@ -107,10 +107,14 @@ func main() {
 			src, err := ioutil.ReadAll(resp.Body)
 			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
 
+			/*
 			md_src := fmt.Sprintf("```diff\n%s\n```\n", src)
 			md, _, md_err := gh_client.Markdown(md_src, md_opt)
 			if md_err != nil { log.Fatalf("failed rendering diff: %s", md_err) }
 			item.Patch = md
+			*/
+
+			item.Patch = "<pre>" + string(src) + "</pre>"
 
 			feed_items = append(feed_items, &item)
 			feed_items.RemoveOld()
