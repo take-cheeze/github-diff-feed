@@ -20,8 +20,20 @@
 			"Rev": "40e4aedc8fabf8c23e040057540867186712faa5"
 		},
 		{
-			"ImportPath": "github.com/pksunkara/pygments",
-			"Rev": "3b84c4ee4834ff9c296267e3d9e8866363f3497b"
+			"ImportPath": "github.com/sergi/go-diff/diffmatchpatch",
+			"Rev": "ec7fdbb58eb3e300c8595ad5ac74a5aa50019cc7"
+		},
+		{
+			"ImportPath": "github.com/shurcooL/highlight_diff",
+			"Rev": "8f0db662adc4a5ba63b4ca15bf66ab08123f7161"
+		},
+		{
+			"ImportPath": "github.com/sourcegraph/annotate",
+			"Rev": "a44dd3d6d2fecf11026692aafe4124462bd2bf9a"
+		},
+		{
+			"ImportPath": "github.com/sourcegraph/syntaxhighlight",
+			"Rev": "637a8b8b94eca8bb8cd559b950cc4f42629ec137"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",

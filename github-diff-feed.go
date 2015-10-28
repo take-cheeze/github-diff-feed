@@ -10,10 +10,12 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"text/template"
 	"time"
 	"golang.org/x/tools/blog/atom"
 	"github.com/gorilla/feeds"
-	"github.com/pksunkara/pygments"
+	"github.com/shurcooL/highlight_diff"
+	"github.com/sourcegraph/annotate"
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,10 +102,81 @@ func main() {
 			resp, err := http.Get(item.Url + ".patch")
 			if err != nil { log.Fatalf("patch fetch error: %s", err) }
 
-			body, err := ioutil.ReadAll(resp.Body)
+			src, err := ioutil.ReadAll(resp.Body)
 			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
 
-			item.Patch = pygments.Highlight(string(body), "diff", "html", "utf-8")
+			anns, err := highlight_diff.Annotate(src)
+			if err != nil { log.Fatalf("Failed highlighting patch: %s", err) }
+
+			lines := bytes.Split(src, []byte("\n"))
+			lineStarts := make([]int, len(lines))
+			var offset int
+			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+				lineStarts[lineIndex] = offset
+				offset += len(lines[lineIndex]) + 1
+			}
+
+			lastDel, lastIns := -1, -1
+			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+				var lineFirstChar byte
+				if len(lines[lineIndex]) > 0 {
+					lineFirstChar = lines[lineIndex][0]
+				}
+				switch lineFirstChar {
+				case '+':
+					if lastIns == -1 {
+						lastIns = lineIndex
+					}
+				case '-':
+					if lastDel == -1 {
+						lastDel = lineIndex
+					}
+				default:
+					if lastDel != -1 || lastIns != -1 {
+						if lastDel == -1 {
+							lastDel = lastIns
+						} else if lastIns == -1 {
+							lastIns = lineIndex
+						}
+
+						beginOffsetLeft := lineStarts[lastDel]
+						endOffsetLeft := lineStarts[lastIns]
+						beginOffsetRight := lineStarts[lastIns]
+						endOffsetRight := lineStarts[lineIndex]
+
+						anns = append(anns, &annotate.Annotation{Start: beginOffsetLeft, End: endOffsetLeft, Left: []byte(`<span class="gd input-block">`), Right: []byte(`</span>`), WantInner: 0})
+						anns = append(anns, &annotate.Annotation{Start: beginOffsetRight, End: endOffsetRight, Left: []byte(`<span class="gi input-block">`), Right: []byte(`</span>`), WantInner: 0})
+
+						if '@' != lineFirstChar {
+							//leftContent := string(src[beginOffsetLeft:endOffsetLeft])
+							//rightContent := string(src[beginOffsetRight:endOffsetRight])
+							// This is needed to filter out the "-" and "+" at the beginning of each line from being highlighted.
+							// TODO: Still not completely filtered out.
+							leftContent := ""
+							for line := lastDel; line < lastIns; line++ {
+								leftContent += "\x00" + string(lines[line][1:]) + "\n"
+							}
+							rightContent := ""
+							for line := lastIns; line < lineIndex; line++ {
+								rightContent += "\x00" + string(lines[line][1:]) + "\n"
+							}
+
+							var sectionSegments [2][]*annotate.Annotation
+							highlight_diff.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
+
+							anns = append(anns, sectionSegments[0]...)
+							anns = append(anns, sectionSegments[1]...)
+						}
+					}
+					lastDel, lastIns = -1, -1
+				}
+			}
+
+			sort.Sort(anns)
+
+			out, err := annotate.Annotate(src, anns, template.HTMLEscape)
+			if err != nil { log.Fatalf("Failed highlighting patch: %s", err) }
+			item.Patch = string(out)
 			feed_items = append(feed_items, &item)
 
 			feed_items.RemoveOld()
