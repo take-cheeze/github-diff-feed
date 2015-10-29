@@ -121,6 +121,15 @@ func main() {
 		}
 	}()
 
+	ping_ticker := time.NewTicker(time.Minute * 15)
+	go func() {
+		for {
+			<- ping_ticker.C
+			_, err := http.Get(os.Getenv("HEROKU_URL") + "ping")
+			if err != nil { log.Fatalf("failed pinging to avoid idle: %s", err) }
+		}
+	}()
+
 	r := gin.Default()
 	r.GET("/", func(c *gin.Context) {
 		now := time.Now()
@@ -144,6 +153,9 @@ func main() {
 		body, err := feed.ToAtom()
 		if err != nil { log.Fatalf("failed generating atom feed: %s", err) }
 		c.Data(200, "application/atom+xml", []byte(body))
+	})
+	r.GET("/ping", func(c *gin.Context) {
+		c.Data(200, "text/plain", []byte("pong"))
 	})
 	r.Run(":" + port);
 }
