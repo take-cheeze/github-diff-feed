@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -112,7 +113,7 @@ func main() {
 			item.Patch = md
 			*/
 
-			item.Patch = "<pre>" + string(src) + "</pre>"
+			item.Patch = "<pre>" + html.EscapeString(string(src)) + "</pre>"
 
 			feed_items = append(feed_items, &item)
 			feed_items.RemoveOld()
