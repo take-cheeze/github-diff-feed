@@ -78,7 +78,7 @@ func main() {
 			e := <-patch_chan
 			link := e.Link[0].Href
 
-			log.Printf("Checking: %s", link)
+			// log.Printf("Checking: %s", link)
 
 			already_fetched := false
 			for _, v := range feed_items {
@@ -100,10 +100,8 @@ func main() {
 				Title: fmt.Sprintf("%s (%s...%s)", e.Title, m[3], m[4]) }
 
 			log.Printf("Fetching: %s.patch", item.Url)
-
 			resp, err := http.Get(item.Url + ".patch")
 			if err != nil { log.Fatalf("patch fetch error: %s", err) }
-
 			src, err := ioutil.ReadAll(resp.Body)
 			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
 
