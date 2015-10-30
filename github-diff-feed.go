@@ -28,7 +28,7 @@ type FeedItem struct {
 
 type FeedItems []*FeedItem
 
-const FEED_ITEM_MAX = 200
+const FEED_ITEM_MAX = 50
 
 func (s FeedItems) Len() int { return len(s) }
 func (s FeedItems) Less(i, j int) bool { return s[i].Updated.Before(s[j].Updated) }
