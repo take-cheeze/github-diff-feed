@@ -29,6 +29,7 @@ type FeedItem struct {
 type FeedItems []*FeedItem
 
 const FEED_ITEM_MAX = 50
+const FEED_SIZE_THRESHOLD = 1 * 1024 * 1024 // 1 MB
 
 func (s FeedItems) Len() int { return len(s) }
 func (s FeedItems) Less(i, j int) bool { return s[i].Updated.Before(s[j].Updated) }
@@ -113,7 +114,11 @@ func main() {
 			item.Patch = md
 			*/
 
-			item.Patch = "<pre>" + html.EscapeString(string(src)) + "</pre>"
+			if len(src) > FEED_SIZE_THRESHOLD {
+				item.Patch = "Patch size too big."
+			} else {
+				item.Patch = "<pre>" + html.EscapeString(string(src)) + "</pre>"
+			}
 
 			feed_items = append(feed_items, &item)
 			feed_items.RemoveOld()
