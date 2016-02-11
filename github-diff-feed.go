@@ -114,7 +114,9 @@ func main() {
 			item.Patch = md
 			*/
 
-			if len(src) > FEED_SIZE_THRESHOLD {
+			if len(src) == 0 {
+				continue; // skip empty feed
+			} else if len(src) > FEED_SIZE_THRESHOLD {
 				item.Patch = "Patch size too big."
 			} else {
 				item.Patch = "<pre>" + html.EscapeString(string(src)) + "</pre>"
