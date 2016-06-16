@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 	"golang.org/x/tools/blog/atom"
 	"github.com/gorilla/feeds"
@@ -78,6 +79,10 @@ func main() {
 	go func() {
 		for {
 			e := <-patch_chan
+
+			// skip github pages update
+			if strings.Contains(e.Title, "pushed to gh-pages at") { continue }
+
 			link := e.Link[0].Href
 
 			// log.Printf("Checking: %s", link)
