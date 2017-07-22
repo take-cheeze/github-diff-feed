@@ -107,7 +107,11 @@ func main() {
 				Title: fmt.Sprintf("%s (%s...%s)", e.Title, m[3], m[4]) }
 
 			log.Printf("Fetching: %s.patch", item.Url)
-			resp, err := http.Get(item.Url + ".patch")
+			patch_url := item.Url + ".patch"
+			resp, err := http.Get(patch_url)
+			if resp.StatusCode != http.StatusOK {
+				log.Fatalf("cannot access to patch: %s", patch_url)
+			}
 			if err != nil { log.Fatalf("patch fetch error: %s", err) }
 			src, err := ioutil.ReadAll(resp.Body)
 			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
