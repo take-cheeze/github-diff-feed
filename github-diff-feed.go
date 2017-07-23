@@ -111,6 +111,7 @@ func main() {
 			resp, err := http.Get(patch_url)
 			if resp.StatusCode != http.StatusOK {
 				log.Fatalf("cannot access to patch: %s", patch_url)
+				continue
 			}
 			if err != nil { log.Fatalf("patch fetch error: %s", err) }
 			src, err := ioutil.ReadAll(resp.Body)
