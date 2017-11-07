@@ -20,6 +20,9 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[metadata.heroku]
+  root-package = "github.com/take-cheeze/github-diff-feed"
+  go-version = 'go1.9.1'
 
 [[constraint]]
   name = "github.com/gin-gonic/gin"
