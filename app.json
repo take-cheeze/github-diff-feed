@@ -1,5 +1,0 @@
-{
-  "scripts": {
-    "postdeploy": "easy_install pygments"
-  }
-}
