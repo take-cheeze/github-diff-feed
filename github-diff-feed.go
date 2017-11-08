@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/xml"
 	"fmt"
 	"html"
@@ -16,7 +15,7 @@ import (
 	"golang.org/x/tools/blog/atom"
 	"github.com/gorilla/feeds"
 	"github.com/gin-gonic/gin"
-	// "github.com/google/go-github/github"
+	"github.com/gin-contrib/gzip"
 )
 
 type FeedItem struct {
@@ -56,15 +55,18 @@ func main() {
 			feed_url := os.Getenv("GITHUB_FEED_URL")
 			log.Printf("Fetching: %s", feed_url)
 			resp, err := http.Get(feed_url)
-			if err != nil { log.Fatalf("feed fetch error: %s", err) }
+			if err != nil {
+				log.Printf("feed fetch error: %s", err)
+				continue
+			}
 
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
-
-			d := xml.NewDecoder(bytes.NewReader(body))
+			d := xml.NewDecoder(resp.Body)
 			a := atom.Feed {}
-			dec_err := d.Decode(&a)
-			if dec_err != nil { log.Fatalf("failed to parse feed: %s", dec_err) }
+			err = d.Decode(&a)
+			if err != nil {
+				log.Printf("failed to parse feed: %s", err)
+				continue
+			}
 
 			for _, e := range a.Entry { patch_chan <- e }
 
@@ -99,8 +101,11 @@ func main() {
 			m := URL_MATCH.FindStringSubmatch(link)
 			if m == nil { continue }
 
-			parsed_time, time_err := time.Parse("2006-01-02T15:04:05Z", string(e.Updated))
-			if time_err != nil { log.Fatalf("failed parsing time: %s", time_err) }
+			parsed_time, err := time.Parse("2006-01-02T15:04:05Z", string(e.Updated))
+			if err != nil {
+				log.Printf("failed parsing time: %s", err)
+				continue
+			}
 
 			item := FeedItem{
 				Url: e.Link[0].Href, Updated: parsed_time, Author: e.Author.Name,
@@ -110,12 +115,18 @@ func main() {
 			patch_url := item.Url + ".patch"
 			resp, err := http.Get(patch_url)
 			if resp.StatusCode != http.StatusOK {
-				log.Fatalf("cannot access to patch: %s", patch_url)
+				log.Printf("cannot access to patch: %s", patch_url)
 				continue
 			}
-			if err != nil { log.Fatalf("patch fetch error: %s", err) }
+			if err != nil {
+				log.Printf("patch fetch error: %s", err)
+				continue
+			}
 			src, err := ioutil.ReadAll(resp.Body)
-			if err != nil { log.Fatalf("failed reading feed body: %s", err) }
+			if err != nil {
+				log.Printf("failed reading feed body: %s", err)
+				continue
+			}
 
 			/*
 			md_src := fmt.Sprintf("```diff\n%s\n```\n", src)
@@ -142,11 +153,15 @@ func main() {
 		for {
 			<- ping_ticker.C
 			_, err := http.Get(os.Getenv("HEROKU_URL") + "ping")
-			if err != nil { log.Fatalf("failed pinging to avoid idle: %s", err) }
+			if err != nil {
+				log.Printf("failed pinging to avoid idle: %s", err)
+				continue
+			}
 		}
 	}()
 
 	r := gin.Default()
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/", func(c *gin.Context) {
 		now := time.Now()
 		feed := &feeds.Feed{
@@ -167,7 +182,11 @@ func main() {
 		}
 
 		body, err := feed.ToAtom()
-		if err != nil { log.Fatalf("failed generating atom feed: %s", err) }
+		if err != nil {
+			log.Printf("failed generating atom feed: %s", err)
+			c.Data(503, "text/plain", []byte("failed feed generation"))
+			return
+		}
 		c.Data(200, "application/atom+xml", []byte(body))
 	})
 	r.GET("/ping", func(c *gin.Context) {
