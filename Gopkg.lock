@@ -20,10 +20,10 @@
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
-  branch = "master"
   name = "github.com/gorilla/feeds"
   packages = ["."]
-  revision = "b78e02c3f88b84269be5c20c2b98127bbea1fcba"
+  revision = "4b936b5221c53c99fcd4b15ac0b8c38ff490ab89"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/mattn/go-isatty"
@@ -35,19 +35,19 @@
   branch = "master"
   name = "github.com/ugorji/go"
   packages = ["codec"]
-  revision = "f96c3ef8537241b4d508df6db3e0337d3130e50b"
+  revision = "00a57e09e383d445aeef6c6cd642969dc4360231"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "d4266bc12aae0b4128952c889b769442fce5d2f1"
+  revision = "75813c647272dd855bda156405bf844a5414f5bf"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/tools"
   packages = ["blog/atom"]
-  revision = "c84da9fa1c1dbcae4557e8c8509abeb814ed9632"
+  revision = "05e91d06384e3a4eb0aba75560d254b8d5a7b431"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v8"
