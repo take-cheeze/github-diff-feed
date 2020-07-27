@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 	"golang.org/x/tools/blog/atom"
+	"github.com/dustin/go-humanize"
 	"github.com/gorilla/feeds"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/gzip"
@@ -138,7 +139,7 @@ func main() {
 			if len(src) == 0 {
 				continue; // skip empty feed
 			} else if len(src) > FEED_SIZE_THRESHOLD {
-				item.Patch = "Patch size too big."
+				item.Patch = fmt.Sprintf("Patch size too big: %s", humanize.Bytes(uint64(len(src))))
 			} else {
 				item.Patch = "<pre>" + html.EscapeString(string(src)) + "</pre>"
 			}
