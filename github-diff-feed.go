@@ -166,10 +166,10 @@ func main() {
 
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	getter := func(c *gin.Context, itemGetter func(*FeedItem) string) {
+	getter := func(c *gin.Context, title string, itemGetter func(*FeedItem) string) {
 		now := time.Now()
 		feed := &feeds.Feed{
-			Title: "github-diff-feed",
+			Title: "github-diff-feed " + title,
 			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL")},
 			Description: "feed generated from github feed",
 			Author: &feeds.Author { "take-cheeze", "takechi101010@gmail.com" },
@@ -194,17 +194,17 @@ func main() {
 		c.Data(200, "application/atom+xml", []byte(body))
 	}
 	r.GET("/", func(c *gin.Context) {
-		getter(c, func(i *FeedItem) string {
+		getter(c, "patch", func(i *FeedItem) string {
 			return i.Patch
 		})
 	})
 	r.GET("/patch", func(c *gin.Context) {
-		getter(c, func(i *FeedItem) string {
+		getter(c, "patch", func(i *FeedItem) string {
 			return i.Patch
 		})
 	})
 	r.GET("/diff", func(c *gin.Context) {
-		getter(c, func(i *FeedItem) string {
+		getter(c, "diff", func(i *FeedItem) string {
 			return i.Diff
 		})
 	})
