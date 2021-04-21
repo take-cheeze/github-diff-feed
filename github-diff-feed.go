@@ -179,7 +179,7 @@ func main() {
 		feed.Items = make([]*feeds.Item, len(feed_items))
 		for idx, i := range feed_items {
 			feed.Items[idx] = &feeds.Item{
-				Title: i.Title, Link: &feeds.Link{Href: i.Url}, Description: i.Patch,
+				Title: i.Title, Link: &feeds.Link{Href: i.Url}, Description: itemGetter(i),
 				Author: &feeds.Author{i.Author, ""},
 				Created: i.Updated,
 			}
