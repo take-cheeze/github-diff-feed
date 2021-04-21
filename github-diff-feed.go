@@ -23,6 +23,7 @@ type FeedItem struct {
 	Url string
 	Updated time.Time
 	Patch string
+	Diff string
 	Title string
 	Author string
 }
@@ -112,37 +113,39 @@ func main() {
 				Url: e.Link[0].Href, Updated: parsed_time, Author: e.Author.Name,
 				Title: fmt.Sprintf("%s (%s...%s)", e.Title, m[3], m[4]) }
 
-			log.Printf("Fetching: %s.patch", item.Url)
-			patch_url := item.Url + ".patch"
-			resp, err := http.Get(patch_url)
-			if resp.StatusCode != http.StatusOK {
-				log.Printf("cannot access to patch: %s", patch_url)
-				continue
-			}
-			if err != nil {
-				log.Printf("patch fetch error: %s", err)
-				continue
-			}
-			src, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Printf("failed reading feed body: %s", err)
-				continue
+			fetchUrl := func(url string) string {
+				log.Printf("Fetching: %s", url)
+				resp, err := http.Get(url)
+				if resp.StatusCode != http.StatusOK {
+					log.Printf("cannot access to data: %s", url)
+					return ""
+				}
+				if err != nil {
+					log.Printf("data fetch error: %s", err)
+					return ""
+				}
+				src, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					log.Printf("failed reading feed body: %s", err)
+					return ""
+				}
+
+				var ret string
+				if len(src) == 0 {
+					return "" // skip empty feed
+				} else if len(src) > FEED_SIZE_THRESHOLD {
+					ret = fmt.Sprintf("Data size too big: %s", humanize.Bytes(uint64(len(src))))
+				} else {
+					ret = "<pre>" + html.EscapeString(string(src)) + "</pre>"
+				}
+				return ret;
 			}
 
-			/*
-			md_src := fmt.Sprintf("```diff\n%s\n```\n", src)
-			md, _, md_err := gh_client.Markdown(md_src, md_opt)
-			if md_err != nil { log.Fatalf("failed rendering diff: %s", md_err) }
-			item.Patch = md
-			*/
-
-			if len(src) == 0 {
-				continue; // skip empty feed
-			} else if len(src) > FEED_SIZE_THRESHOLD {
-				item.Patch = fmt.Sprintf("Patch size too big: %s", humanize.Bytes(uint64(len(src))))
-			} else {
-				item.Patch = "<pre>" + html.EscapeString(string(src)) + "</pre>"
+			item.Patch = fetchUrl(item.Url + ".patch")
+			if len(item.Patch) == 0 {
+				continue
 			}
+			item.Diff = fetchUrl(item.Url + ".diff")
 
 			feed_items = append(feed_items, &item)
 			feed_items.RemoveOld()
@@ -163,7 +166,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	r.GET("/", func(c *gin.Context) {
+	getter := func(c *gin.Context, itemGetter func(*FeedItem) string) {
 		now := time.Now()
 		feed := &feeds.Feed{
 			Title: "github-diff-feed",
@@ -189,6 +192,21 @@ func main() {
 			return
 		}
 		c.Data(200, "application/atom+xml", []byte(body))
+	}
+	r.GET("/", func(c *gin.Context) {
+		getter(c, func(i *FeedItem) string {
+			return i.Patch
+		})
+	})
+	r.GET("/patch", func(c *gin.Context) {
+		getter(c, func(i *FeedItem) string {
+			return i.Patch
+		})
+	})
+	r.GET("/diff", func(c *gin.Context) {
+		getter(c, func(i *FeedItem) string {
+			return i.Diff
+		})
 	})
 	r.GET("/ping", func(c *gin.Context) {
 		c.Data(200, "text/plain", []byte("pong"))
