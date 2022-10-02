@@ -12,20 +12,21 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"golang.org/x/tools/blog/atom"
+
 	"github.com/dustin/go-humanize"
-	"github.com/gorilla/feeds"
-	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/gzip"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/feeds"
+	"golang.org/x/tools/blog/atom"
 )
 
 type FeedItem struct {
-	Url string
+	Url     string
 	Updated time.Time
-	Patch string
-	Diff string
-	Title string
-	Author string
+	Patch   string
+	Diff    string
+	Title   string
+	Author  string
 }
 
 type FeedItems []*FeedItem
@@ -33,22 +34,28 @@ type FeedItems []*FeedItem
 const FEED_ITEM_MAX = 50
 const FEED_SIZE_THRESHOLD = 1 * 1024 * 1024 // 1 MB
 
-func (s FeedItems) Len() int { return len(s) }
+func (s FeedItems) Len() int           { return len(s) }
 func (s FeedItems) Less(i, j int) bool { return s[i].Updated.Before(s[j].Updated) }
-func (s FeedItems) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s FeedItems) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s FeedItems) RemoveOld() FeedItems {
 	sort.Sort(s)
 	l := 0
-	if FEED_ITEM_MAX < len(s) { l = FEED_ITEM_MAX } else { l = len(s) }
-	return s[len(s) - l:l]
+	if FEED_ITEM_MAX < len(s) {
+		l = FEED_ITEM_MAX
+	} else {
+		l = len(s)
+	}
+	return s[len(s)-l : l]
 }
 
 func main() {
 	port := os.Getenv("PORT")
 
-	if port == "" { log.Fatal("$PORT must be set") }
+	if port == "" {
+		log.Fatal("$PORT must be set")
+	}
 
-	feed_items := FeedItems {}
+	feed_items := FeedItems{}
 	patch_chan := make(chan *atom.Entry)
 
 	ticker := time.NewTicker(time.Minute * 5)
@@ -63,16 +70,18 @@ func main() {
 			}
 
 			d := xml.NewDecoder(resp.Body)
-			a := atom.Feed {}
+			a := atom.Feed{}
 			err = d.Decode(&a)
 			if err != nil {
 				log.Printf("failed to parse feed: %s", err)
 				continue
 			}
 
-			for _, e := range a.Entry { patch_chan <- e }
+			for _, e := range a.Entry {
+				patch_chan <- e
+			}
 
-			<- ticker.C
+			<-ticker.C
 		}
 	}()
 
@@ -85,7 +94,9 @@ func main() {
 			e := <-patch_chan
 
 			// skip github pages update
-			if strings.Contains(e.Title, "pushed to gh-pages at") { continue }
+			if strings.Contains(e.Title, "pushed to gh-pages at") {
+				continue
+			}
 
 			link := e.Link[0].Href
 
@@ -98,10 +109,14 @@ func main() {
 					break
 				}
 			}
-			if already_fetched { continue }
+			if already_fetched {
+				continue
+			}
 
 			m := URL_MATCH.FindStringSubmatch(link)
-			if m == nil { continue }
+			if m == nil {
+				continue
+			}
 
 			parsed_time, err := time.Parse("2006-01-02T15:04:05Z", string(e.Updated))
 			if err != nil {
@@ -111,7 +126,7 @@ func main() {
 
 			item := FeedItem{
 				Url: e.Link[0].Href, Updated: parsed_time, Author: e.Author.Name,
-				Title: fmt.Sprintf("%s (%s...%s)", e.Title, m[3], m[4]) }
+				Title: fmt.Sprintf("%s (%s...%s)", e.Title, m[3], m[4])}
 
 			fetchUrl := func(url string) string {
 				log.Printf("Fetching: %s", url)
@@ -138,7 +153,7 @@ func main() {
 				} else {
 					ret = "<pre>" + html.EscapeString(string(src)) + "</pre>"
 				}
-				return ret;
+				return ret
 			}
 
 			item.Patch = fetchUrl(item.Url + ".patch")
@@ -155,7 +170,7 @@ func main() {
 	ping_ticker := time.NewTicker(time.Minute * 15)
 	go func() {
 		for {
-			<- ping_ticker.C
+			<-ping_ticker.C
 			_, err := http.Get(os.Getenv("HEROKU_URL") + "ping")
 			if err != nil {
 				log.Printf("failed pinging to avoid idle: %s", err)
@@ -169,10 +184,13 @@ func main() {
 	getter := func(c *gin.Context, title string, itemGetter func(*FeedItem) string) {
 		now := time.Now()
 		feed := &feeds.Feed{
-			Title: "github-diff-feed " + title,
-			Link: &feeds.Link{Href: os.Getenv("HEROKU_URL") + title},
+			Title:       "github-diff-feed " + title,
+			Link:        &feeds.Link{Href: os.Getenv("HEROKU_URL") + title},
 			Description: "feed generated from github feed",
-			Author: &feeds.Author { "take-cheeze", "takechi101010@gmail.com" },
+			Author: &feeds.Author{
+				Name:  "take-cheeze",
+				Email: "takechi101010@gmail.com",
+			},
 			Created: now,
 		}
 
@@ -180,7 +198,10 @@ func main() {
 		for idx, i := range feed_items {
 			feed.Items[idx] = &feeds.Item{
 				Title: i.Title, Link: &feeds.Link{Href: i.Url}, Description: itemGetter(i),
-				Author: &feeds.Author{i.Author, ""},
+				Author: &feeds.Author{
+					Name:  i.Author,
+					Email: "",
+				},
 				Created: i.Updated,
 			}
 		}
@@ -211,5 +232,5 @@ func main() {
 	r.GET("/ping", func(c *gin.Context) {
 		c.Data(200, "text/plain", []byte("pong"))
 	})
-	r.Run(":" + port);
+	r.Run(":" + port)
 }
